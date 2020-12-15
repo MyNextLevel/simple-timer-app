@@ -3,12 +3,11 @@ package com.abbasibnilkham.timerapp.cache
 import android.content.Context
 import android.content.Context.MODE_PRIVATE
 import com.abbasibnilkham.timerapp.fragments.TimerFragment
-import com.abbasibnilkham.timerapp.utils.Utils.ALARM_SET_TIME_ID
-import com.abbasibnilkham.timerapp.utils.Utils.END_TIME_ID
-import com.abbasibnilkham.timerapp.utils.Utils.MILLIS_LEFT_ID
-import com.abbasibnilkham.timerapp.utils.Utils.MILLIS_START_ID
-import com.abbasibnilkham.timerapp.utils.Utils.SHARED_PREFS
-import com.abbasibnilkham.timerapp.utils.Utils.TIMER_STATE_ID
+import com.abbasibnilkham.timerapp.utils.Constants.END_TIME_ID
+import com.abbasibnilkham.timerapp.utils.Constants.MILLIS_LEFT_ID
+import com.abbasibnilkham.timerapp.utils.Constants.MILLIS_START_ID
+import com.abbasibnilkham.timerapp.utils.Constants.SHARED_PREFS
+import com.abbasibnilkham.timerapp.utils.Constants.TIMER_STATE_ID
 
 class PrefUtils {
 
