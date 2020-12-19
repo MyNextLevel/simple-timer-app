@@ -3,10 +3,12 @@ package com.abbasibnilkham.timerapp.fragments
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.NotificationManager.IMPORTANCE_DEFAULT
-import android.app.NotificationManager.IMPORTANCE_HIGH
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Context.NOTIFICATION_SERVICE
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -24,6 +26,7 @@ import com.abbasibnilkham.timerapp.cache.PrefUtils
 import com.abbasibnilkham.timerapp.dialogs.AddDialog
 import com.abbasibnilkham.timerapp.models.Timer
 import com.abbasibnilkham.timerapp.utils.Constants
+import com.abbasibnilkham.timerapp.utils.Constants.ACTION_UPDATE_NOTIFICATION
 import com.abbasibnilkham.timerapp.utils.Constants.NOTIFICATION_ID
 import com.abbasibnilkham.timerapp.utils.Constants.PRIMARY_CHANNEL_ID
 import com.abbasibnilkham.timerapp.utils.gone
@@ -43,7 +46,8 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
     private var millisStart: Long? = null
     private var endTime: Long? = null
     private var timerState = TimerState.Null
-    private var mNotifyManager:NotificationManager?=null
+    private var mNotifyManager: NotificationManager? = null
+    private var mReceiver = NotificationReceiver()
 
     enum class TimerState {
         Null, Stopped, Paused, Running, Finished
@@ -73,8 +77,10 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
         }
 
         btnResumeRestart.setOnClickListener {
-            if (timerState == TimerState.Finished) resetTimer()
-            else startOrResumeTimer()
+            if (timerState == TimerState.Finished) {
+                resetTimer()
+                cancelNotification()
+            } else startOrResumeTimer()
         }
 
         btnCancel.setOnClickListener {
@@ -82,6 +88,7 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
             updateMainUI()
             updateButtonsAndTimerLayout()
             countDownTimer?.cancel()
+            cancelNotification()
         }
     }
 
@@ -118,6 +125,7 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
         }
 
         createNotificationChannel()
+        requireContext().registerReceiver(mReceiver, IntentFilter(ACTION_UPDATE_NOTIFICATION))
     }
 
     override fun onStop() {
@@ -214,6 +222,7 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
             if (minute > 9) minute.toString() else "0${minute}"
         tvRunningSecond.text =
             if (second > 9) second.toString() else "0${second}"
+        updateNotification(hour, minute, second)
     }
 
     private fun createDialog() {
@@ -243,12 +252,17 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
     }
 
     fun createNotificationChannel() {
-        mNotifyManager = requireContext().getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        mNotifyManager =
+            requireContext().getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val notificationChannel = NotificationChannel(PRIMARY_CHANNEL_ID,"Finished Notification", IMPORTANCE_DEFAULT).apply {
+            val notificationChannel = NotificationChannel(
+                PRIMARY_CHANNEL_ID,
+                "Finished Notification",
+                IMPORTANCE_DEFAULT
+            ).apply {
                 enableLights(true)
-                lightColor=Color.RED
+                lightColor = Color.RED
                 enableVibration(true)
                 description = "Timer is up"
             }
@@ -256,22 +270,65 @@ class TimerFragment : Fragment(R.layout.fragment_timer), AddDialog.OnAddButtonCl
         }
     }
 
-    fun getNotificationBuilder(): NotificationCompat.Builder {
-        val notificationIntent = Intent(requireContext(),MainActivity::class.java)
-        val notificationPendingIntent = PendingIntent.getActivity(requireContext(), NOTIFICATION_ID,notificationIntent,PendingIntent.FLAG_UPDATE_CURRENT)
+    fun getNotificationBuilder(
+        hour: String,
+        minute: String,
+        second: String
+    ): NotificationCompat.Builder {
+        val notificationIntent = Intent(requireContext(), MainActivity::class.java)
+        val notificationPendingIntent = PendingIntent.getActivity(
+            requireContext(),
+            NOTIFICATION_ID,
+            notificationIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT
+        )
         val notifyBuilder = NotificationCompat.Builder(requireContext(), PRIMARY_CHANNEL_ID)
-            .setContentTitle("Time is finished!")
+            .setContentTitle("$hour:$minute:$second")
             .setContentText("You have been notified about time is up.")
             .setSmallIcon(R.drawable.ic_timer)
             .setContentIntent(notificationPendingIntent)
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-        return notifyBuilder
+        return if (timerState == TimerState.Running)
+            notifyBuilder.setPriority(NotificationCompat.PRIORITY_LOW)
+        else notifyBuilder.setPriority(NotificationCompat.PRIORITY_DEFAULT)
+        //return notifyBuilder
     }
 
     fun sendNotification() {
-        val notifyBuilder = getNotificationBuilder()
-        mNotifyManager?.notify(NOTIFICATION_ID,notifyBuilder.build())
+        val updateIntent = Intent(ACTION_UPDATE_NOTIFICATION)
+        val updatePendingIntent = PendingIntent.getBroadcast(
+            requireContext(),
+            NOTIFICATION_ID,
+            updateIntent,
+            PendingIntent.FLAG_ONE_SHOT
+        )
+        val notifyBuilder = getNotificationBuilder("nan", "nan", "nan")
+            .addAction(R.drawable.ic_play, "Update notification", updatePendingIntent)
+        mNotifyManager?.notify(NOTIFICATION_ID, notifyBuilder.build())
+    }
+
+    fun updateNotification(hour: Int, minute: Int, second: Int) {
+        val hourString = if (hour > 9) hour.toString() else "0${hour}"
+        val minuteString = if (minute > 9) minute.toString() else "0${minute}"
+        val secondString = if (second > 9) second.toString() else "0${second}"
+        val notifyBuilder = getNotificationBuilder(hourString, minuteString, secondString)
+        mNotifyManager?.notify(NOTIFICATION_ID, notifyBuilder.build())
+    }
+
+    fun cancelNotification() {
+        mNotifyManager?.cancel(NOTIFICATION_ID)
+    }
+
+    inner class NotificationReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            //updateNotification()
+        }
+    }
+
+    override fun onDetach() {
+        super.onDetach()
+        requireContext().unregisterReceiver(mReceiver)
     }
 }

@@ -13,4 +13,5 @@ object Constants {
 
     const val PRIMARY_CHANNEL_ID = "primary_notification_channel"
     const val NOTIFICATION_ID = 0
+    const val ACTION_UPDATE_NOTIFICATION = "com.abbasibnilkham.timerapp.utils.ACTION_UPDATE_NOTIFICATION"
 }
