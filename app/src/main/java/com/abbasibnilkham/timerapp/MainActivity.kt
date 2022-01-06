@@ -1,6 +1,5 @@
 package com.abbasibnilkham.timerapp
 
-import android.app.Notification
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.View
@@ -49,7 +48,7 @@ class MainActivity : AppCompatActivity() {
             .setContentTitle(textTimer)
             .setSmallIcon(R.drawable.ic_pause)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .build() as Notification
+            .build()
         notificationManager?.notify(1, notification)
     }
 
@@ -59,7 +58,7 @@ class MainActivity : AppCompatActivity() {
             .setSmallIcon(R.drawable.ic_play)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentText("Time is finished")
-            .build() as Notification
+            .build()
         notificationManager?.notify(1, notification)
     }
 }
